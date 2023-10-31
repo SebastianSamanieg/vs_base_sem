@@ -2,14 +2,10 @@ import pandas as pd
 from functions import functions
 
 if __name__ == "__main__":
+    functions_instance = functions()
+    resumen = functions_instance.obtener_registros_que_no_cruzan('base_pasada.xlsx', 'base_actual.xlsx')
 
-    # Creamos una instancia de la clase functions
-    functions = functions()
- 
-    functions.obtener_registros_que_no_cruzan('base_pasada.xlsx', 'base_actual.xlsx', 'Octubre', 'Octubre')
+    print("Resumen de registros que no cruzan:")
+    print(resumen)
 
-
-
-    # df = pd.read_excel('base_actual.xlsx','Octubre')
-    # print(df.head())
-    
+    resumen.to_excel('mi_dataframe.xlsx', index=False)

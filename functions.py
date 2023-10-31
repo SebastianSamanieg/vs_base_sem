@@ -28,34 +28,34 @@ class functions:
             print(f"Error al leer la hoja '{hoja}' del archivo '{archivo}': {e}")
             return None
 
-    def obtener_registros_que_no_cruzan(self, base_pasada_file, base_actual_file, sheet_name_pasada, sheet_name_actual):
+    def obtener_registros_que_no_cruzan(self, base_pasada_file, base_actual_file):
         """
-        Obtiene registros de la base actual que no cruzan con la base pasada.
+        Obtiene registros de la base actual que no cruzan con la base pasada para todas las hojas en ambos archivos.
         Args:
             base_pasada_file (str): Ruta al archivo de la base pasada.
             base_actual_file (str): Ruta al archivo de la base actual.
-            sheet_name_pasada (str): Nombre de la hoja en la base pasada.
-            sheet_name_actual (str): Nombre de la hoja en la base actual.
         Returns:
-            pd.DataFrame: DataFrame con registros que no cruzan entre la base pasada y la base actual.
+            pd.DataFrame: DataFrame con un resumen de registros que no cruzan para cada hoja.
         """
-        base_pasada_df = self.leer_hoja_excel(base_pasada_file, sheet_name_pasada)
-        base_actual_df = self.leer_hoja_excel(base_actual_file, sheet_name_actual)
+        base_pasada = pd.ExcelFile(base_pasada_file)
+        base_actual = pd.ExcelFile(base_actual_file)
+        hojas_pasada = base_pasada.sheet_names
+        hojas_actual = base_actual.sheet_names
 
-        if base_pasada_df is None or base_actual_df is None:
-            return None
+        resumen_df = pd.DataFrame(columns=['Hoja', 'Registros que no cruzan', 'Total Valor'])
 
-        base_pasada_df['Codigo'] = base_pasada_df.apply(self.crear_codigo, axis=1)
-        base_actual_df['Codigo'] = base_actual_df.apply(self.crear_codigo, axis=1)
+        for hoja in hojas_pasada:
+            if hoja in hojas_actual:
+                base_pasada_df = self.leer_hoja_excel(base_pasada_file, hoja)
+                base_actual_df = self.leer_hoja_excel(base_actual_file, hoja)
 
-        registros_no_cruzados = base_actual_df[~base_actual_df['Codigo'].isin(base_pasada_df['Codigo'])]
-        total_valor = registros_no_cruzados['Importe_ML_'].sum()
-        cantidad_registros = len(registros_no_cruzados)
+                if base_pasada_df is not None and base_actual_df is not None:
+                    base_pasada_df['Codigo'] = base_pasada_df.apply(self.crear_codigo, axis=1)
+                    base_actual_df['Codigo'] = base_actual_df.apply(self.crear_codigo, axis=1)
 
-        print(f"Registros que no cruzan: {cantidad_registros}")
-        print(f"Total Valor: {total_valor}")
+                    registros_no_cruzados = base_actual_df[~base_actual_df['Codigo'].isin(base_pasada_df['Codigo'])]
+                    total_valor = registros_no_cruzados['Importe_ML_'].sum()
+                    cantidad_registros = len(registros_no_cruzados)
 
-        # Crear un DataFrame con las columnas 'Factura nueva' y 'Valor'
-        df_resultado = pd.DataFrame({'Factura nueva': [cantidad_registros], 'Valor': [total_valor]})
-
-        print(df_resultado)
+                    resumen_df = pd.concat([resumen_df, pd.DataFrame({'Hoja': [hoja], 'Registros que no cruzan': [cantidad_registros], 'Total Valor': [total_valor]})], ignore_index=True)
+        return resumen_df
