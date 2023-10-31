@@ -38,6 +38,8 @@ Este script está diseñado para analizar dos bases de datos semanales en format
      - CONCEPTO
      - MES
 
+   3. En la carpeta my_app se deben dejar los dos archivos excel
+
 
 # Paso a paso generación del informe:
 1. Se debe crear en las dos bases una columna nueva que sea la concatenación de las columnas: 'CUENTA','N_doc','Importe_ML_' y se llamara base 'Codigo'
