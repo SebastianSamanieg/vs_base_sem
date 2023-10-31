@@ -1,3 +1,4 @@
+# En el archivo functions.py
 import pandas as pd
 
 class functions:
@@ -28,34 +29,41 @@ class functions:
             print(f"Error al leer la hoja '{hoja}' del archivo '{archivo}': {e}")
             return None
 
-    def obtener_registros_que_no_cruzan(self, base_pasada_file, base_actual_file):
+    def obtener_registros_que_no_cruzan(self, base_pasada_file, base_actual_file, output_file):
         """
-        Obtiene registros de la base actual que no cruzan con la base pasada para todas las hojas en ambos archivos.
+        Obtiene registros de la base actual que no cruzan con la base pasada para todas las hojas en ambos archivos y
+        guarda un resumen y el detalle en hojas separadas del archivo de salida.
         Args:
             base_pasada_file (str): Ruta al archivo de la base pasada.
             base_actual_file (str): Ruta al archivo de la base actual.
-        Returns:
-            pd.DataFrame: DataFrame con un resumen de registros que no cruzan para cada hoja.
+            output_file (str): Nombre del archivo de salida.
         """
         base_pasada = pd.ExcelFile(base_pasada_file)
         base_actual = pd.ExcelFile(base_actual_file)
         hojas_pasada = base_pasada.sheet_names
         hojas_actual = base_actual.sheet_names
 
-        resumen_df = pd.DataFrame(columns=['Hoja', 'Registros que no cruzan', 'Total Valor'])
+        resumen_df = pd.DataFrame(columns=['Facturas nuevas en', 'Cantidad', 'Total Valor'])
 
-        for hoja in hojas_pasada:
-            if hoja in hojas_actual:
-                base_pasada_df = self.leer_hoja_excel(base_pasada_file, hoja)
-                base_actual_df = self.leer_hoja_excel(base_actual_file, hoja)
+        with pd.ExcelWriter(output_file, engine='xlsxwriter') as writer:
+            writer.book.use_zip64()  # Para permitir hojas grandes
 
-                if base_pasada_df is not None and base_actual_df is not None:
-                    base_pasada_df['Codigo'] = base_pasada_df.apply(self.crear_codigo, axis=1)
-                    base_actual_df['Codigo'] = base_actual_df.apply(self.crear_codigo, axis=1)
+            for hoja in hojas_pasada:
+                if hoja in hojas_actual:
+                    base_pasada_df = self.leer_hoja_excel(base_pasada_file, hoja)
+                    base_actual_df = self.leer_hoja_excel(base_actual_file, hoja)
 
-                    registros_no_cruzados = base_actual_df[~base_actual_df['Codigo'].isin(base_pasada_df['Codigo'])]
-                    total_valor = registros_no_cruzados['Importe_ML_'].sum()
-                    cantidad_registros = len(registros_no_cruzados)
+                    if base_pasada_df is not None and base_actual_df is not None:
+                        base_pasada_df['Codigo'] = base_pasada_df.apply(self.crear_codigo, axis=1)
+                        base_actual_df['Codigo'] = base_actual_df.apply(self.crear_codigo, axis=1)
 
-                    resumen_df = pd.concat([resumen_df, pd.DataFrame({'Hoja': [hoja], 'Registros que no cruzan': [cantidad_registros], 'Total Valor': [total_valor]})], ignore_index=True)
-        return resumen_df
+                        registros_no_cruzados = base_actual_df[~base_actual_df['Codigo'].isin(base_pasada_df['Codigo'])]
+                        total_valor = registros_no_cruzados['Importe_ML_'].sum()
+                        cantidad_registros = len(registros_no_cruzados)
+
+                        resumen_df = pd.concat([resumen_df, pd.DataFrame({'Facturas nuevas en': [hoja], 'Cantidad': [cantidad_registros], 'Total Valor': [total_valor]})], ignore_index=True)
+
+                        # Guardar los detalles en una hoja separada
+                        registros_no_cruzados.to_excel(writer, sheet_name=f'Detalle_{hoja[:20]}', index=False)
+
+            resumen_df.to_excel(writer, sheet_name='Resumen', index=False)
